@@ -18,7 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh && chown -R app:app /app
+RUN sed -i 's/\r$//' /entrypoint.sh \
+    && chmod +x /entrypoint.sh \
+    && chown -R app:app /app
 
 # Runs as root by default so host-mounted config folders created by Portainer/root remain writable.
 # Put the service behind a trusted LAN/VPN and set ADMIN_PASSWORD.

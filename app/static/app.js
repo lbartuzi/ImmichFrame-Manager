@@ -2,7 +2,7 @@
   const statusBox = document.getElementById('apiStatus');
   const loadBtn = document.getElementById('loadAlbums');
   const testBtn = document.getElementById('testConnection');
-  const table = document.getElementById('albumTable');
+  const albumList = document.getElementById('albumList');
   const selectedInput = document.getElementById('selectedAlbums');
   const hiddenInput = document.getElementById('hiddenAlbums');
   const albumSearch = document.getElementById('albumSearch');
@@ -10,7 +10,7 @@
   const selectVisible = document.getElementById('selectVisible');
   const clearVisible = document.getElementById('clearVisible');
 
-  if (!table) return;
+  if (!albumList) return;
 
   let albums = Array.isArray(window.IMF_MANAGER?.albums) ? window.IMF_MANAGER.albums : [];
   let selected = new Set((window.IMF_MANAGER?.selectedAlbums || []).map(String));
@@ -48,7 +48,7 @@
     const manual = document.querySelector('.manual-fields');
     if (manual) manual.style.display = mode === 'manual' ? 'grid' : 'none';
     const text = {
-      manual: 'Manual mode: the manager will not overwrite Albums. Use the raw Albums / ExcludedAlbums fields below. The table only shows the cached Immich albums.',
+      manual: 'Manual mode: the manager will not overwrite Albums. Use the raw Albums / ExcludedAlbums fields below. The album list only shows the cached Immich albums.',
       all: 'Allow all: every cached album passing the shared/owned/prefix filters is written into Accounts[n].Albums when you apply or sync.',
       selected: 'Show selected: only checked albums are written. Use this for a strict allow-list.',
       hide_selected: 'Hide selected: checked albums are removed from the matching album list. Use this when almost everything should be shown.'
@@ -58,38 +58,52 @@
 
   function renderAlbums() {
     renderModeHelp();
-    const tbody = table.querySelector('tbody');
     const mode = currentMode();
     const visibleAlbums = albums.filter(rowWanted);
     if (!albums.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="muted">No cached albums yet. Click “Refresh album cache” after saving a valid Immich URL and API key.</td></tr>`;
+      albumList.innerHTML = `<div class="album-empty muted">No cached albums yet. Click "Refresh album cache" after saving a valid Immich URL and API key.</div>`;
       return;
     }
     if (!visibleAlbums.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="muted">No cached albums match the search filter.</td></tr>`;
+      albumList.innerHTML = `<div class="album-empty muted">No cached albums match the search filter.</div>`;
       return;
     }
-    tbody.innerHTML = visibleAlbums.map(album => {
+    albumList.innerHTML = visibleAlbums.map(album => {
       const id = String(album.id || '');
       let checked = false;
       if (mode === 'selected') checked = selected.has(id);
       else if (mode === 'hide_selected') checked = hidden.has(id);
       else if (mode === 'all') checked = true;
       else checked = (window.IMF_MANAGER?.accountAlbums || []).map(String).includes(id);
-      const disabled = mode === 'all' || mode === 'manual' ? 'disabled' : '';
-      return `<tr data-album-id="${escapeHtml(id)}" data-search="${escapeHtml(`${album.albumName} ${id}`.toLowerCase())}">
-        <td><input type="checkbox" class="album-check" value="${escapeHtml(id)}" ${checked ? 'checked' : ''} ${disabled}></td>
-        <td><strong>${escapeHtml(album.albumName || id)}</strong>${album.ownerName ? `<br><span class="muted">${escapeHtml(album.ownerName)}</span>` : ''}</td>
-        <td>${album.assetCount ?? ''}</td>
-        <td>${album.shared ? 'yes' : 'no'}</td>
-        <td><code>${escapeHtml(id)}</code></td>
-      </tr>`;
+      const disabled = mode === 'all' || mode === 'manual';
+      const shortId = id.length > 14 ? `${id.slice(0, 8)}...${id.slice(-4)}` : id;
+      return `<label class="album-row ${disabled ? 'is-disabled' : ''}" data-album-id="${escapeHtml(id)}">
+        <span class="album-cell album-cell-check">
+          <input type="checkbox" class="album-check" value="${escapeHtml(id)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+        </span>
+        <span class="album-cell album-cell-main">
+          <strong>${escapeHtml(album.albumName || id)}</strong>
+          ${album.ownerName ? `<span class="muted">${escapeHtml(album.ownerName)}</span>` : '<span class="muted">Owner unavailable</span>'}
+        </span>
+        <span class="album-cell album-cell-meta">
+          <span class="album-cell-label">Assets</span>
+          <span>${album.assetCount ?? '—'}</span>
+        </span>
+        <span class="album-cell album-cell-meta">
+          <span class="album-cell-label">Shared</span>
+          <span>${album.shared ? 'yes' : 'no'}</span>
+        </span>
+        <span class="album-cell album-cell-id">
+          <span class="album-cell-label">ID</span>
+          <code title="${escapeHtml(id)}">${escapeHtml(shortId)}</code>
+        </span>
+      </label>`;
     }).join('');
   }
 
   function updateFromCheckboxes() {
     const mode = currentMode();
-    for (const check of table.querySelectorAll('.album-check')) {
+    for (const check of albumList.querySelectorAll('.album-check')) {
       const id = check.value;
       if (mode === 'selected') {
         if (check.checked) selected.add(id); else selected.delete(id);
@@ -133,7 +147,7 @@
     });
   }
 
-  table.addEventListener('change', (event) => {
+  albumList.addEventListener('change', (event) => {
     if (event.target.classList.contains('album-check')) updateFromCheckboxes();
   });
 
@@ -146,7 +160,7 @@
   if (selectVisible) selectVisible.addEventListener('click', () => {
     const mode = currentMode();
     if (mode !== 'selected' && mode !== 'hide_selected') return;
-    for (const check of table.querySelectorAll('.album-check')) {
+    for (const check of albumList.querySelectorAll('.album-check')) {
       if (!check.disabled) check.checked = true;
     }
     updateFromCheckboxes();
@@ -155,7 +169,7 @@
   if (clearVisible) clearVisible.addEventListener('click', () => {
     const mode = currentMode();
     if (mode !== 'selected' && mode !== 'hide_selected') return;
-    for (const check of table.querySelectorAll('.album-check')) {
+    for (const check of albumList.querySelectorAll('.album-check')) {
       if (!check.disabled) check.checked = false;
     }
     updateFromCheckboxes();

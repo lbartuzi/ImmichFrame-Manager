@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Account {{ index + 1 }} - ImmichFrame Manager{% endblock %}
 {% block content %}
-<section class="card">
-  <div class="section-head">
-    <div>
+<section class="card account-page">
+  <div class="section-head account-head">
+    <div class="account-head-copy">
       <h1>{{ account.Name or ('Account ' ~ (index + 1)) }}</h1>
       <p>Configure Immich access, ImmichFrame source filters, and how album IDs are written into <code>Settings.json</code>.</p>
     </div>
-    <div class="actions">
+    <div class="actions account-head-actions">
       <button id="testConnection" type="button" data-test-url="{{ url_for('api_test_account', index=index) }}">Test Immich</button>
       <button id="loadAlbums" type="button" data-albums-url="{{ url_for('api_albums', index=index) }}">Refresh album cache</button>
     </div>
@@ -22,8 +22,8 @@
   </div>
   <div id="apiStatus" class="notice hidden"></div>
 
-  <form method="post" id="accountForm" class="settings-form">
-    <fieldset>
+  <form method="post" id="accountForm" class="settings-form account-form">
+    <fieldset class="form-section">
       <legend>Immich account</legend>
       <p class="field-help">This account is the Immich identity used by ImmichFrame. A clean pattern is to create an Immich user called <code>frame</code>, share albums with that user, and use that user's API key here.</p>
       <div class="grid two">
@@ -35,7 +35,7 @@
       <label class="inline-check"><input type="checkbox" name="refresh_album_cache_after_save" checked> After saving, refresh and persist the album list from Immich</label>
     </fieldset>
 
-    <fieldset>
+    <fieldset class="form-section">
       <legend>ImmichFrame account filters</legend>
       <p class="field-help">These are ImmichFrame account-level options. They are independent from the album policy below and are passed through to ImmichFrame.</p>
       <div class="checks">
@@ -60,7 +60,7 @@
       </div>
     </fieldset>
 
-    <fieldset>
+    <fieldset class="form-section">
       <legend>Album policy</legend>
       <p class="field-help">The policy controls how this sidecar converts the cached Immich album list into the explicit <code>Accounts[n].Albums</code> list used by ImmichFrame.</p>
       <div class="policy-grid">
@@ -86,11 +86,17 @@
         <button type="button" id="clearVisible">Clear visible</button>
       </div>
       <div class="album-mode-help" id="albumModeHelp"></div>
-      <div class="table-wrap">
-        <table id="albumTable">
-          <thead><tr><th>Use</th><th>Album</th><th>Assets</th><th>Shared</th><th>ID</th></tr></thead>
-          <tbody><tr><td colspan="5" class="muted">Loading cached album table…</td></tr></tbody>
-        </table>
+      <div class="album-browser">
+        <div class="album-list-head" aria-hidden="true">
+          <span>Use</span>
+          <span>Album</span>
+          <span>Assets</span>
+          <span>Shared</span>
+          <span>ID</span>
+        </div>
+        <div id="albumList" class="album-list">
+          <div class="album-empty muted">Loading cached albums…</div>
+        </div>
       </div>
 
       <input type="hidden" name="selected_albums" id="selectedAlbums" value="{{ (policy.selected_albums or [])|join(',') }}">
@@ -108,11 +114,11 @@
   </form>
 
   <div class="danger-zone">
-    <form method="post" action="{{ url_for('apply_account', index=index) }}">
+    <form method="post" action="{{ url_for('apply_account', index=index) }}" class="danger-zone-form">
       <label><input type="checkbox" name="restart" checked> Restart ImmichFrame after applying</label>
       <button type="submit">Apply policy now</button>
     </form>
-    <form method="post" action="{{ url_for('delete_account', index=index) }}" onsubmit="return confirm('Delete this account from Settings?')">
+    <form method="post" action="{{ url_for('delete_account', index=index) }}" class="danger-zone-form" onsubmit="return confirm('Delete this account from Settings?')">
       <button class="danger" type="submit">Delete account</button>
     </form>
   </div>
