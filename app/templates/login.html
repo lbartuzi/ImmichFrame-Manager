@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Login - ImmichFrame Manager{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Login</h1>
+  <form method="post" class="stack">
+    {% if admin_username %}
+    <label>Username
+      <input name="username" value="{{ admin_username }}" autofocus required>
+    </label>
+    {% endif %}
+    <label>Password
+      <input type="password" name="password" {% if not admin_username %}autofocus{% endif %} required>
+    </label>
+    <button class="primary" type="submit">Login</button>
+  </form>
+</section>
+{% endblock %}

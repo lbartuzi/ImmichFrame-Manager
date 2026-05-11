@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Account {{ index + 1 }} - ImmichFrame Manager{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h1>{{ account.Name or ('Account ' ~ (index + 1)) }}</h1>
+      <p>Configure Immich access, ImmichFrame source filters, and how album IDs are written into <code>Settings.json</code>.</p>
+    </div>
+    <div class="actions">
+      <button id="testConnection" type="button" data-test-url="{{ url_for('api_test_account', index=index) }}">Test Immich</button>
+      <button id="loadAlbums" type="button" data-albums-url="{{ url_for('api_albums', index=index) }}">Refresh album cache</button>
+    </div>
+  </div>
+
+  <div class="notice info">
+    <strong>Cached album list:</strong>
+    {{ (policy.album_cache or [])|length }} album(s)
+    {% if policy.last_album_refresh %} · refreshed {{ policy.last_album_refresh }}{% endif %}
+    {% if policy.album_cache_source %} · source: {{ policy.album_cache_source }}{% endif %}
+    {% if policy.album_cache_error %}<br><span class="danger-text">Last cache error: {{ policy.album_cache_error.message }}</span>{% endif %}
+  </div>
+  <div id="apiStatus" class="notice hidden"></div>
+
+  <form method="post" id="accountForm" class="settings-form">
+    <fieldset>
+      <legend>Immich account</legend>
+      <p class="field-help">This account is the Immich identity used by ImmichFrame. A clean pattern is to create an Immich user called <code>frame</code>, share albums with that user, and use that user's API key here.</p>
+      <div class="grid two">
+        <label>Name<span class="hint">Friendly label only, used by this manager.</span><input name="Name" value="{{ account.Name or '' }}" placeholder="Living room frame"></label>
+        <label>Immich server URL<span class="hint">Use the Docker network URL if possible, for example <code>http://immich-server:2283</code>.</span><input name="ImmichServerUrl" value="{{ account.ImmichServerUrl or '' }}" placeholder="http://immich-server:2283"></label>
+        <label>API key<span class="hint">Needs permission to read albums. Stored in ImmichFrame's Settings.json.</span><input type="password" name="ApiKey" value="{{ account.ApiKey or '' }}" autocomplete="off"></label>
+        <label>API key file<span class="hint">Optional alternative to storing the key directly. Example: <code>/run/secrets/immich_api_key</code>.</span><input name="ApiKeyFile" value="{{ account.ApiKeyFile or '' }}" placeholder="/run/secrets/immich_api_key"></label>
+      </div>
+      <label class="inline-check"><input type="checkbox" name="refresh_album_cache_after_save" checked> After saving, refresh and persist the album list from Immich</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>ImmichFrame account filters</legend>
+      <p class="field-help">These are ImmichFrame account-level options. They are independent from the album policy below and are passed through to ImmichFrame.</p>
+      <div class="checks">
+        {% for field,label,desc in [
+          ('ShowMemories','Show memories','Include Immich memories as a source.'),
+          ('ShowFavorites','Show favorites','Include favorited assets.'),
+          ('ShowArchived','Show archived','Allow archived assets.'),
+          ('ShowVideos','Show videos','Allow videos if your frame/client supports them.')
+        ] %}
+          <label title="{{ desc }}"><input type="checkbox" name="{{ field }}" {% if account.get(field) %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+      <div class="grid three">
+        <label>Images from date<span class="hint">Optional absolute lower date, for example <code>2024-01-01</code>.</span><input name="ImagesFromDate" value="{{ account.ImagesFromDate or '' }}" placeholder="2024-01-01"></label>
+        <label>Images from days<span class="hint">Optional rolling window, for example <code>365</code>.</span><input type="number" name="ImagesFromDays" value="{{ account.ImagesFromDays or '' }}"></label>
+        <label>Images until date<span class="hint">Optional upper date, for example <code>2025-12-31</code>.</span><input name="ImagesUntilDate" value="{{ account.ImagesUntilDate or '' }}" placeholder="2025-12-31"></label>
+        <label>Rating<span class="hint">Optional ImmichFrame rating filter.</span><input type="number" name="Rating" value="{{ account.Rating or '' }}" min="0" max="5"></label>
+      </div>
+      <div class="grid two">
+        <label>People IDs, comma-separated<span class="hint">Advanced: person IDs from Immich.</span><textarea name="People" rows="3">{{ (account.People or [])|join(', ') }}</textarea></label>
+        <label>Tags, comma-separated<span class="hint">Advanced: Immich tags to include.</span><textarea name="Tags" rows="3">{{ (account.Tags or [])|join(', ') }}</textarea></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Album policy</legend>
+      <p class="field-help">The policy controls how this sidecar converts the cached Immich album list into the explicit <code>Accounts[n].Albums</code> list used by ImmichFrame.</p>
+      <div class="policy-grid">
+        <label class="policy"><input type="radio" name="album_mode" value="manual" {% if policy.album_mode == 'manual' %}checked{% endif %}> <strong>Manual</strong><span>Keep direct text-field control. The checkbox table is only informational.</span></label>
+        <label class="policy"><input type="radio" name="album_mode" value="all" {% if policy.album_mode == 'all' %}checked{% endif %}> <strong>Allow all</strong><span>Write every cached album that passes shared/owned/prefix filters.</span></label>
+        <label class="policy"><input type="radio" name="album_mode" value="selected" {% if policy.album_mode == 'selected' %}checked{% endif %}> <strong>Show selected</strong><span>Write only checked albums. Best when you want strict allow-list control.</span></label>
+        <label class="policy"><input type="radio" name="album_mode" value="hide_selected" {% if policy.album_mode == 'hide_selected' %}checked{% endif %}> <strong>Hide selected</strong><span>Write all matching albums except checked albums. Best when most albums should show.</span></label>
+      </div>
+
+      <div class="grid three">
+        <label class="inline-check"><input type="checkbox" name="auto_sync" {% if policy.auto_sync %}checked{% endif %}> Auto-sync this account<span class="hint">The background worker periodically refreshes albums and reapplies the policy.</span></label>
+        <label class="inline-check"><input type="checkbox" name="include_shared" {% if policy.include_shared %}checked{% endif %}> Include shared albums<span class="hint">Albums shared with the API-key user.</span></label>
+        <label class="inline-check"><input type="checkbox" name="include_owned" {% if policy.include_owned %}checked{% endif %}> Include owned albums<span class="hint">Albums owned by the API-key user.</span></label>
+      </div>
+      <label>Name prefix filter
+        <span class="hint">Optional. Use for workflows like only albums whose name starts with <code>Frame - </code>.</span>
+        <input name="name_prefix" value="{{ policy.name_prefix or '' }}" placeholder="Frame - ">
+      </label>
+
+      <div class="album-tools">
+        <input id="albumSearch" placeholder="Filter cached albums by name, owner, or ID">
+        <button type="button" id="selectVisible">Select visible</button>
+        <button type="button" id="clearVisible">Clear visible</button>
+      </div>
+      <div class="album-mode-help" id="albumModeHelp"></div>
+      <div class="table-wrap">
+        <table id="albumTable">
+          <thead><tr><th>Use</th><th>Album</th><th>Assets</th><th>Shared</th><th>ID</th></tr></thead>
+          <tbody><tr><td colspan="5" class="muted">Loading cached album table…</td></tr></tbody>
+        </table>
+      </div>
+
+      <input type="hidden" name="selected_albums" id="selectedAlbums" value="{{ (policy.selected_albums or [])|join(',') }}">
+      <input type="hidden" name="hidden_albums" id="hiddenAlbums" value="{{ (policy.hidden_albums or [])|join(',') }}">
+
+      <div class="grid two manual-fields">
+        <label>Albums, comma-separated<span class="hint">Direct ImmichFrame album UUID list. Policy modes overwrite this except Manual.</span><textarea name="Albums" rows="4">{{ (account.Albums or [])|join(', ') }}</textarea></label>
+        <label>ExcludedAlbums, comma-separated<span class="hint">Kept for compatibility/manual editing. Policy modes currently materialize an explicit Albums list.</span><textarea name="ExcludedAlbums" rows="4">{{ (account.ExcludedAlbums or [])|join(', ') }}</textarea></label>
+      </div>
+    </fieldset>
+
+    <div class="sticky-actions">
+      <button class="primary" type="submit">Save account & policy</button>
+    </div>
+  </form>
+
+  <div class="danger-zone">
+    <form method="post" action="{{ url_for('apply_account', index=index) }}">
+      <label><input type="checkbox" name="restart" checked> Restart ImmichFrame after applying</label>
+      <button type="submit">Apply policy now</button>
+    </form>
+    <form method="post" action="{{ url_for('delete_account', index=index) }}" onsubmit="return confirm('Delete this account from Settings?')">
+      <button class="danger" type="submit">Delete account</button>
+    </form>
+  </div>
+</section>
+
+<script>
+window.IMF_MANAGER = {
+  albums: {{ (policy.album_cache or [])|tojson }},
+  selectedAlbums: {{ (policy.selected_albums or [])|tojson }},
+  hiddenAlbums: {{ (policy.hidden_albums or [])|tojson }},
+  accountAlbums: {{ (account.Albums or [])|tojson }},
+  accountExcludedAlbums: {{ (account.ExcludedAlbums or [])|tojson }}
+};
+</script>
+{% endblock %}

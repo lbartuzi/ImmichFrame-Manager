@@ -1,0 +1,58 @@
+services:
+  immichframe:
+    container_name: immichframe2
+    image: ghcr.io/immichframe/immichframe:latest
+    restart: unless-stopped
+    ports:
+      - "7891:8080"
+    volumes:
+      - immichframe_config:/app/Config
+    environment:
+      TZ: Europe/Amsterdam
+
+  immichframe-manager:
+    container_name: immichframe-manager
+    # For Portainer stacks, use a pre-built local image:
+    image: immich_frame_manager:latest
+    # For CLI development, you can replace image with:
+    # build: .
+    restart: unless-stopped
+    depends_on:
+      - immichframe
+    ports:
+      - "7892:8099"
+    volumes:
+      - immichframe_config:/config
+      - immichframe_manager_data:/data
+      # Optional but needed for automatic ImmichFrame restart.
+      # Remove this line if you prefer to restart immichframe2 manually.
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      TZ: Europe/Amsterdam
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: change-this-password
+      SETTINGS_FILE: /config/Settings.json
+      STATE_FILE: /data/state.json
+      IMMICHFRAME_CONTAINER: immichframe2
+      ENABLE_DOCKER_RESTART: "true"
+      AUTO_RESTART_ON_SYNC: "true"
+      ENABLE_BACKGROUND_SYNC: "true"
+      SYNC_INTERVAL_SECONDS: "300"
+      INITIAL_ALBUM_LOAD: "true"
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: "8099"
+
+volumes:
+  immichframe_config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /ddata/immichFrame/config
+
+  immichframe_manager_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /ddata/immichFrame/data

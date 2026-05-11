@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Raw Settings.json - ImmichFrame Manager{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Raw Settings.json</h1>
+  <p>This editor writes the full mounted ImmichFrame settings file. A backup is created before saving.</p>
+  <form method="post" class="stack">
+    <textarea name="raw" rows="28" class="code-editor">{{ raw }}</textarea>
+    <button class="primary" type="submit">Validate & save JSON</button>
+  </form>
+</section>
+{% endblock %}

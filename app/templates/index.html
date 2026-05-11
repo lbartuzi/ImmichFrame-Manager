@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - ImmichFrame Manager{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>ImmichFrame configuration sidecar</h1>
+    <p>Manage the mounted ImmichFrame <code>Settings.json</code>, cache Immich albums, and apply repeatable album-selection policies without editing Portainer stacks.</p>
+  </div>
+  <div class="hero-actions">
+    <form method="post" action="{{ url_for('sync_all') }}">
+      <input type="hidden" name="force" value="on">
+      <button class="primary" type="submit">Sync all now</button>
+    </form>
+    <form method="post" action="{{ url_for('restart') }}">
+      <button type="submit">Restart ImmichFrame</button>
+    </form>
+  </div>
+</section>
+
+<section class="grid two">
+  <div class="card">
+    <h2>Status</h2>
+    <dl class="facts">
+      <dt>Accounts</dt><dd>{{ accounts|length }}</dd>
+      <dt>Last sync</dt><dd>{{ state.last_sync or 'never' }}</dd>
+      <dt>Last error</dt><dd>{{ state.last_error.message if state.last_error else 'none' }}</dd>
+      <dt>Restart target</dt><dd><code>{{ docker_container }}</code></dd>
+      <dt>Auto restart</dt><dd>{{ 'enabled' if auto_restart_on_sync else 'disabled' }}</dd>
+    </dl>
+    <p class="muted">A sync refreshes album caches, writes album IDs to <code>Settings.json</code> according to each account policy, and optionally restarts ImmichFrame.</p>
+  </div>
+  <div class="card">
+    <h2>Add account</h2>
+    <form method="post" action="{{ url_for('new_account') }}" class="row-form">
+      <input name="name" placeholder="Frame account name">
+      <button type="submit">Add</button>
+    </form>
+    <p class="muted">Each account maps to one Immich account/API key in ImmichFrame. For clean album management, create a separate Immich user such as <code>frame</code>.</p>
+  </div>
+</section>
+
+<section class="card">
+  <h2>How the album modes behave</h2>
+  <div class="grid four">
+    <div class="mini-card"><strong>Manual</strong><p>Do not overwrite album lists. Useful while testing or when you want direct UUID control.</p></div>
+    <div class="mini-card"><strong>Allow all</strong><p>Every cached Immich album that passes filters is written to ImmichFrame.</p></div>
+    <div class="mini-card"><strong>Show selected</strong><p>Only checked albums are written. This is the safest strict allow-list mode.</p></div>
+    <div class="mini-card"><strong>Hide selected</strong><p>Everything matching the filters is written except checked albums.</p></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Accounts</h2>
+  {% if not accounts %}
+    <p>No accounts yet. Add one above.</p>
+  {% else %}
+  <div class="account-list">
+    {% for account in accounts %}
+      {% set policy = policies[loop.index0] %}
+      <article class="account-card">
+        <div>
+          <h3><a href="{{ url_for('account', index=loop.index0) }}">{{ account.Name or ('Account ' ~ loop.index) }}</a></h3>
+          <p><code>{{ account.ImmichServerUrl or 'no Immich URL' }}</code></p>
+          <p class="muted">
+            Mode: <strong>{{ policy.album_mode }}</strong>
+            · configured albums: {{ (account.Albums or [])|length }}
+            · cached albums: {{ (policy.album_cache or [])|length }}
+            · last album refresh: {{ policy.last_album_refresh or 'never' }}
+            · auto-sync: {{ 'on' if policy.auto_sync else 'off' }}
+          </p>
+        </div>
+        <div class="actions">
+          <a class="button" href="{{ url_for('account', index=loop.index0) }}">Manage</a>
+          <form method="post" action="{{ url_for('apply_account', index=loop.index0) }}">
+            <button type="submit">Apply</button>
+          </form>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

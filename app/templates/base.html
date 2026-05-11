@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ImmichFrame Manager{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <a class="brand" href="{{ url_for('index') }}">ImmichFrame Manager</a>
+    <span class="subtle">sidecar config UI</span>
+  </div>
+  <nav>
+    <a href="{{ url_for('index') }}">Dashboard</a>
+    <a href="{{ url_for('general') }}">General</a>
+    <a href="{{ url_for('raw_config') }}">Raw JSON</a>
+    {% if auth_enabled %}<a href="{{ url_for('logout') }}">Logout</a>{% endif %}
+  </nav>
+</header>
+<main class="container">
+  {% if not auth_enabled %}
+  <div class="notice warning">ADMIN_PASSWORD is not set. This UI is open to anyone who can reach it. Put it behind a trusted LAN/VPN or set ADMIN_PASSWORD.</div>
+  {% endif %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-wrap">
+      {% for category, message in messages %}
+        <div class="notice {{ category }}">{{ message }}</div>
+      {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="footer">
+  <span>Settings: <code>{{ settings_file }}</code></span>
+  <span>State: <code>{{ state_file }}</code></span>
+  <span>Docker: {% if docker_available %}available{% else %}not available{% endif %}</span>
+</footer>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

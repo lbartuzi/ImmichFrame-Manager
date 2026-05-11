@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}General settings - ImmichFrame Manager{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>General ImmichFrame settings</h1>
+  <form method="post" class="settings-form">
+    <fieldset>
+      <legend>Playback & layout</legend>
+      <div class="grid three">
+        <label>Interval seconds<input type="number" name="Interval" value="{{ general.Interval or 45 }}"></label>
+        <label>Transition seconds<input type="number" name="TransitionDuration" value="{{ general.TransitionDuration or 2 }}"></label>
+        <label>Layout<input name="Layout" value="{{ general.Layout or 'splitview' }}"></label>
+      </div>
+      <div class="checks">
+        {% for field,label in [
+          ('ImageZoom','Image zoom'),('ImagePan','Image pan'),('ImageFill','Image fill'),('PlayAudio','Play audio'),('DownloadImages','Download images')
+        ] %}
+          <label><input type="checkbox" name="{{ field }}" {% if general.get(field) %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Overlay & display</legend>
+      <div class="grid three">
+        <label>Clock format<input name="ClockFormat" value="{{ general.ClockFormat or 'HH:mm' }}"></label>
+        <label>Clock date format<input name="ClockDateFormat" value="{{ general.ClockDateFormat or 'eee, MMM d' }}"></label>
+        <label>Base font size<input name="BaseFontSize" value="{{ general.BaseFontSize or '17px' }}"></label>
+        <label>Primary color<input name="PrimaryColor" value="{{ general.PrimaryColor or '#f5deb3' }}"></label>
+        <label>Secondary color<input name="SecondaryColor" value="{{ general.SecondaryColor or '#000000' }}"></label>
+        <label>Style<input name="Style" value="{{ general.Style or 'none' }}"></label>
+      </div>
+      <div class="checks">
+        {% for field,label in [
+          ('ShowClock','Clock'),('ShowProgressBar','Progress bar'),('ShowPhotoDate','Photo date'),('ShowImageDesc','Image description'),('ShowPeopleDesc','People description'),('ShowAlbumName','Album name'),('ShowImageLocation','Image location')
+        ] %}
+          <label><input type="checkbox" name="{{ field }}" {% if general.get(field) %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Dates, localization & weather</legend>
+      <div class="grid three">
+        <label>Photo date format<input name="PhotoDateFormat" value="{{ general.PhotoDateFormat or 'MM/dd/yyyy' }}"></label>
+        <label>Image location format<input name="ImageLocationFormat" value="{{ general.ImageLocationFormat or 'City,State,Country' }}"></label>
+        <label>Language<input name="Language" value="{{ general.Language or 'en' }}"></label>
+        <label>Weather API key<input name="WeatherApiKey" value="{{ general.WeatherApiKey or '' }}"></label>
+        <label>Unit system<input name="UnitSystem" value="{{ general.UnitSystem or 'metric' }}"></label>
+        <label>Weather lat,long<input name="WeatherLatLong" value="{{ general.WeatherLatLong or '' }}"></label>
+        <label>Weather icon URL<input name="WeatherIconUrl" value="{{ general.WeatherIconUrl or 'https://openweathermap.org/img/wn/{IconId}.png' }}"></label>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" name="ShowWeatherDescription" {% if general.get('ShowWeatherDescription') %}checked{% endif %}> Show weather description</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Maintenance & integrations</legend>
+      <div class="grid two">
+        <label>Renew images duration<input type="number" name="RenewImagesDuration" value="{{ general.RenewImagesDuration or 30 }}"></label>
+        <label>Refresh albums/people interval<input type="number" name="RefreshAlbumPeopleInterval" value="{{ general.RefreshAlbumPeopleInterval or 12 }}"></label>
+        <label>Authentication secret<input name="AuthenticationSecret" value="{{ general.AuthenticationSecret or '' }}"></label>
+        <label>Webhook<input name="Webhook" value="{{ general.Webhook or '' }}"></label>
+      </div>
+      <label>Web calendars, comma-separated
+        <textarea name="Webcalendars" rows="3">{{ (general.Webcalendars or [])|join(', ') }}</textarea>
+      </label>
+    </fieldset>
+
+    <button class="primary" type="submit">Save general settings</button>
+  </form>
+</section>
+{% endblock %}
