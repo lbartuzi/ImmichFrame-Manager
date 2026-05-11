@@ -567,6 +567,15 @@ docker run --rm -p 7892:8099 \
   immich_frame_manager:latest
 ```
 
+## License
+
+This project is licensed under the MIT License.
+
+This is an independent hobby project and is not affiliated with, endorsed by, or maintained by the ImmichFrame project.
+
+ImmichFrame itself is licensed separately under GPLv3:
+https://github.com/immichFrame/ImmichFrame
+
 ## Safety notes
 
 - Do not expose this UI directly to the public internet.
