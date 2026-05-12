@@ -180,3 +180,112 @@
 
   renderAlbums();
 })();
+
+/* ── People browser ──────────────────────────────────── */
+(function () {
+  const loadBtn     = document.getElementById('loadPeople');
+  const grid        = document.getElementById('peopleGrid');
+  const searchInput = document.getElementById('peopleSearch');
+  const statusBox   = document.getElementById('peopleStatus');
+  const countBadge  = document.getElementById('peopleBrowserCount');
+  const field       = document.getElementById('peopleField');
+
+  if (!loadBtn || !grid) return;
+
+  const thumbBase  = loadBtn.dataset.thumbBase || '';
+  const peopleUrl  = loadBtn.dataset.peopleUrl || '';
+
+  let allPeople = [];
+  let selected  = new Set((window.IMF_MANAGER?.accountPeople || []).map(String).filter(Boolean));
+
+  function esc(v) {
+    return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  }
+
+  function thumbUrl(id) {
+    return thumbBase.replace('PERSON_ID', encodeURIComponent(id));
+  }
+
+  function syncField() {
+    if (field) field.value = Array.from(selected).join(', ');
+    if (countBadge) {
+      const n = selected.size;
+      countBadge.textContent = n === 1 ? '1 selected' : `${n} selected`;
+    }
+  }
+
+  function showStatus(msg, kind) {
+    if (!statusBox) return;
+    statusBox.textContent = msg;
+    statusBox.className = `notice ${kind || ''}`;
+  }
+
+  function visible() {
+    const q = (searchInput?.value || '').toLowerCase().trim();
+    return q ? allPeople.filter(p => p.name.toLowerCase().includes(q)) : allPeople;
+  }
+
+  function renderPeople() {
+    const list = visible();
+    if (!allPeople.length) {
+      grid.innerHTML = '<div class="people-empty muted">Click "Load / Refresh" to fetch people from Immich.</div>';
+      return;
+    }
+    if (!list.length) {
+      grid.innerHTML = '<div class="people-empty muted">No people match the filter.</div>';
+      return;
+    }
+    grid.innerHTML = list.map(p => {
+      const id  = String(p.id);
+      const sel = selected.has(id);
+      const src = esc(thumbUrl(id));
+      const fb  = '/static/avatar-fallback.svg';
+      return `<label class="person-card${sel ? ' is-selected' : ''}" data-person-id="${esc(id)}">
+  <input type="checkbox" class="person-check sr-only" value="${esc(id)}"${sel ? ' checked' : ''}>
+  <div class="person-avatar-wrap">
+    <img class="person-avatar" src="${src}" alt="${esc(p.name)}" loading="lazy"
+         onerror="this.classList.add('avatar-error');this.nextElementSibling.style.display='flex'">
+    <div class="person-avatar-fallback" style="display:none">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="12" r="6" fill="currentColor" opacity=".55"/>
+        <ellipse cx="16" cy="28" rx="10" ry="7" fill="currentColor" opacity=".55"/>
+      </svg>
+    </div>
+  </div>
+  <span class="person-name">${esc(p.name)}</span>
+</label>`;
+    }).join('');
+  }
+
+  grid.addEventListener('change', e => {
+    if (!e.target.classList.contains('person-check')) return;
+    const id   = e.target.value;
+    const card = e.target.closest('.person-card');
+    if (e.target.checked) { selected.add(id);    card?.classList.add('is-selected'); }
+    else                  { selected.delete(id); card?.classList.remove('is-selected'); }
+    syncField();
+  });
+
+  if (searchInput) searchInput.addEventListener('input', renderPeople);
+
+  loadBtn.addEventListener('click', async () => {
+    loadBtn.disabled = true;
+    showStatus('Loading people from Immich…', 'warning');
+    try {
+      const res  = await fetch(peopleUrl);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+      allPeople = data.people || [];
+      renderPeople();
+      showStatus(`Loaded ${allPeople.length} people.`, 'success');
+      document.getElementById('peopleBrowserAccordion')?.setAttribute('open', '');
+    } catch (err) {
+      showStatus(`Could not load people: ${err.message}`, 'error');
+    } finally {
+      loadBtn.disabled = false;
+    }
+  });
+
+  syncField();
+  renderPeople();
+})();

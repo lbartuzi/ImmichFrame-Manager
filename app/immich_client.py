@@ -118,6 +118,38 @@ class ImmichClient:
         albums = self.list_albums()
         return {"ok": True, "album_count": len(albums)}
 
+    def list_people(self) -> List[Dict[str, Any]]:
+        data = self._get("people")
+        if isinstance(data, dict):
+            raw_list = data.get("people") or data.get("items") or []
+        elif isinstance(data, list):
+            raw_list = data
+        else:
+            raw_list = []
+        people = []
+        for item in raw_list:
+            if not isinstance(item, dict):
+                continue
+            pid = str(item.get("id") or "").strip()
+            if not pid:
+                continue
+            people.append({
+                "id": pid,
+                "name": str(item.get("name") or "").strip() or "(unnamed)",
+                "birthDate": item.get("birthDate"),
+            })
+        return sorted(people, key=lambda p: p["name"].lower())
+
+    def thumbnail_bytes(self, person_id: str) -> Tuple[bytes, str]:
+        for url in self._candidate_urls(f"people/{person_id}/thumbnail"):
+            try:
+                r = requests.get(url, headers=self.headers, timeout=self.timeout)
+                if r.status_code == 200:
+                    return r.content, r.headers.get("Content-Type", "image/jpeg")
+            except requests.RequestException:
+                continue
+        raise ImmichError(f"Could not fetch thumbnail for person {person_id}")
+
     def list_albums(self) -> List[Dict[str, Any]]:
         """
         Immich has historically behaved differently around GET /albums and shared albums.
