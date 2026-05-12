@@ -584,3 +584,14 @@ https://github.com/immichFrame/ImmichFrame
 - Treat Docker socket access as highly privileged.
 - Keep `Settings.json` backups.
 - Remember this is a hobby-maintained sidecar, not an official ImmichFrame component.
+
+## Few Screen-Shots
+
+<img width="1741" height="1261" alt="image" src="https://github.com/user-attachments/assets/2ceabf89-4b5a-47ea-9f47-5dd6598ac81e" />
+<img width="1296" height="1400" alt="image" src="https://github.com/user-attachments/assets/d0c0d940-2009-490b-9afe-14e4f3e3937c" />
+<img width="1249" height="1072" alt="image" src="https://github.com/user-attachments/assets/1c5ff2cd-7489-48dc-bb7e-ead74df2b051" />
+<img width="1255" height="1118" alt="image" src="https://github.com/user-attachments/assets/0fc0dd67-b1e5-48be-a1d6-e86fe5b5daeb" />
+
+
+
+
