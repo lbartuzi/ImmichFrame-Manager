@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List
 
 from flask import (
     Flask,
+    Response,
     flash,
     jsonify,
     redirect,
@@ -333,6 +334,27 @@ def create_app() -> Flask:
     @require_auth
     def api_settings() -> Any:
         return jsonify(store.load_settings())
+
+    @app.route("/api/accounts/<int:index>/people")
+    @require_auth
+    def api_people(index: int) -> Any:
+        try:
+            people = make_client(index).list_people()
+            store.cache_people(index, people)
+            return jsonify({"ok": True, "people": people})
+        except Exception as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+
+    @app.route("/api/accounts/<int:index>/people/<person_id>/thumbnail")
+    @require_auth
+    def api_person_thumbnail(index: int, person_id: str) -> Any:
+        if not person_id.replace("-", "").isalnum():
+            return ("", 400)
+        try:
+            data, content_type = make_client(index).thumbnail_bytes(person_id)
+            return Response(data, content_type=content_type)
+        except Exception:
+            return ("", 404)
 
     def background_sync_loop() -> None:
         interval = max(30, int(app.config["AUTO_SYNC_INTERVAL_SECONDS"]))

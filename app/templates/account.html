@@ -55,9 +55,33 @@
         <label>Rating<span class="hint">Optional ImmichFrame rating filter.</span><input type="number" name="Rating" value="{{ account.Rating or '' }}" min="0" max="5"></label>
       </div>
       <div class="grid two">
-        <label>People IDs, comma-separated<span class="hint">Advanced: person IDs from Immich.</span><textarea name="People" rows="3">{{ (account.People or [])|join(', ') }}</textarea></label>
+        <label>People IDs, comma-separated<span class="hint">Use the browser below to find IDs by face, or paste UUIDs directly.</span><textarea name="People" rows="3" id="peopleField">{{ (account.People or [])|join(', ') }}</textarea></label>
         <label>Tags, comma-separated<span class="hint">Advanced: Immich tags to include.</span><textarea name="Tags" rows="3">{{ (account.Tags or [])|join(', ') }}</textarea></label>
       </div>
+    </fieldset>
+
+    <fieldset class="form-section">
+      <legend>People browser</legend>
+      <details class="people-browser-accordion" id="peopleBrowserAccordion">
+        <summary class="people-browser-summary">
+          <span>Browse &amp; select people by face</span>
+          <span class="people-browser-count" id="peopleBrowserCount">{{ (account.People or [])|length }} selected</span>
+          <span class="people-browser-hint">click to expand · thumbnails loaded from Immich</span>
+        </summary>
+        <div class="people-browser-body">
+          <div class="people-browser-toolbar">
+            <input id="peopleSearch" class="people-search-input" placeholder="Filter by name…" autocomplete="off">
+            <button type="button" id="showSelectedOnly">Show selected only</button>
+            <button type="button" id="loadPeople"
+              data-people-url="{{ url_for('api_people', index=index) }}"
+              data-thumb-base="{{ url_for('api_person_thumbnail', index=index, person_id='PERSON_ID') }}">Load / Refresh</button>
+          </div>
+          <div id="peopleStatus" class="notice hidden"></div>
+          <div id="peopleGrid" class="people-grid">
+            <div class="people-empty muted">Click "Load / Refresh" to fetch people from Immich.</div>
+          </div>
+        </div>
+      </details>
     </fieldset>
 
     <fieldset class="form-section">
@@ -130,7 +154,9 @@ window.IMF_MANAGER = {
   selectedAlbums: {{ (policy.selected_albums or [])|tojson }},
   hiddenAlbums: {{ (policy.hidden_albums or [])|tojson }},
   accountAlbums: {{ (account.Albums or [])|tojson }},
-  accountExcludedAlbums: {{ (account.ExcludedAlbums or [])|tojson }}
+  accountExcludedAlbums: {{ (account.ExcludedAlbums or [])|tojson }},
+  accountPeople: {{ (account.People or [])|tojson }},
+  peopleCached: {{ (policy.people_cache or [])|tojson }},
 };
 </script>
 {% endblock %}

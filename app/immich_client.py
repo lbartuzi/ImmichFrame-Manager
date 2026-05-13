@@ -118,6 +118,52 @@ class ImmichClient:
         albums = self.list_albums()
         return {"ok": True, "album_count": len(albums)}
 
+    def list_people(self) -> List[Dict[str, Any]]:
+        merged: Dict[str, Dict[str, Any]] = {}
+        page = 1
+        size = 100  # smaller pages so Immich hasNextPage / total maths are reliable
+        for _ in range(500):  # safety cap: 50 000 people max
+            data = self._get("people", params={"page": page, "size": size})
+            if isinstance(data, dict):
+                raw_list = data.get("people") or data.get("items") or []
+                # Immich may omit hasNextPage and only provide total — derive from both
+                explicit = data.get("hasNextPage")
+                if explicit is not None:
+                    has_next = bool(explicit)
+                else:
+                    total = int(data.get("total") or 0)
+                    has_next = total > 0 and (page * size) < total
+            elif isinstance(data, list):
+                raw_list = data
+                has_next = False  # legacy API — single flat response, no pagination
+            else:
+                break
+            for item in raw_list:
+                if not isinstance(item, dict):
+                    continue
+                pid = str(item.get("id") or "").strip()
+                if not pid:
+                    continue
+                merged[pid] = {
+                    "id": pid,
+                    "name": str(item.get("name") or "").strip() or "(unnamed)",
+                    "birthDate": item.get("birthDate"),
+                }
+            if not has_next or not raw_list:
+                break
+            page += 1
+        return sorted(merged.values(), key=lambda p: (p["name"] == "(unnamed)", p["name"].lower()))
+
+    def thumbnail_bytes(self, person_id: str) -> Tuple[bytes, str]:
+        for url in self._candidate_urls(f"people/{person_id}/thumbnail"):
+            try:
+                r = requests.get(url, headers=self.headers, timeout=self.timeout)
+                if r.status_code == 200:
+                    return r.content, r.headers.get("Content-Type", "image/jpeg")
+            except requests.RequestException:
+                continue
+        raise ImmichError(f"Could not fetch thumbnail for person {person_id}")
+
     def list_albums(self) -> List[Dict[str, Any]]:
         """
         Immich has historically behaved differently around GET /albums and shared albums.
