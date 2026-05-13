@@ -41,6 +41,9 @@ It provides:
   - **Hide selected**
 - Shared/owned album filters.
 - Optional album-name prefix filter.
+- **People browser**: discover Immich people by face thumbnail, search by name, select them into the `People` field without looking up UUIDs manually.
+- Persistent people cache so face thumbnails appear immediately on page load.
+- "Show selected only" toggle to review and verify your current people selection.
 
 ## Important concept
 
@@ -85,6 +88,35 @@ Good for a strict allow-list.
 The sidecar writes all matching albums except checked albums.
 
 Good when you want almost everything visible but want to exclude a few albums.
+
+## People browser
+
+The account page includes a collapsible **People browser** section between the account filters and the album policy.
+
+### How to use it
+
+1. Open an account page.
+2. Expand the **People browser** accordion.
+3. Click **Load / Refresh** to fetch all people from Immich.
+4. Browse face thumbnails — named people appear first (alphabetical), unnamed at the end.
+5. Click any card to select or deselect a person.
+6. Use **Show selected only** to review exactly who is selected before saving.
+7. Use the search box to filter by name.
+8. Click **Save account & policy** as normal — the selected person UUIDs are written into the `People` field in `Settings.json`.
+
+### People cache
+
+People are cached in the manager state file after each load, so thumbnails are visible immediately when you return to the account page without pressing **Load / Refresh** again. The cache is updated every time you click **Load / Refresh**.
+
+### Pagination
+
+The manager fetches people from Immich in pages of 100 and walks all pages automatically, so libraries with more than 500 people are fully loaded. Pagination uses both the `hasNextPage` flag and the `total` field from the Immich API to handle version differences.
+
+### People and the People field
+
+The browser populates the existing `People` comma-separated textarea on the form. You can still paste UUIDs directly into that field if preferred — the browser and the field stay in sync.
+
+The manager does **not** create, modify, or delete Immich people. It only reads people metadata and proxies face thumbnails (the proxy adds your API key to the request so the browser can display them without storing credentials in the page).
 
 ## Persistent album cache
 
@@ -433,15 +465,17 @@ Stores:
 - selected album IDs
 - hidden album IDs
 - cached album list
-- last refresh timestamp
+- last album refresh timestamp
 - last applied album IDs
+- cached people list (face metadata, no images — thumbnails are proxied live from Immich)
+- last people refresh timestamp
 - last error
 
 ## API behavior
 
-The manager calls the Immich album endpoint using the configured account API key.
+The manager calls Immich using the configured account API key.
 
-To be tolerant of Immich version differences around shared albums, it merges these calls:
+**Albums** — to handle version differences around shared albums, it merges these calls:
 
 ```text
 GET /api/albums
@@ -451,7 +485,21 @@ GET /api/albums?shared=false
 
 If `/api/albums` is not available, it also tries `/albums`.
 
-The manager does **not** create, modify, share, or delete Immich albums. It only reads album metadata.
+**People** — fetches all people via automatic pagination:
+
+```text
+GET /api/people?page=1&size=100
+GET /api/people?page=2&size=100
+... (continues until hasNextPage is false or total is reached)
+```
+
+Face thumbnails are proxied through the manager so the browser can display them without embedding the API key in the page:
+
+```text
+GET /api/accounts/<n>/people/<person-id>/thumbnail  →  proxied from Immich
+```
+
+The manager does **not** create, modify, share, or delete Immich albums or people. It only reads metadata and proxies thumbnails.
 
 ## Troubleshooting
 
@@ -520,6 +568,21 @@ Check these items:
 4. If using a separate `frame` user, the albums are shared with that user.
 5. Click **Test Immich**.
 6. Click **Refresh album cache**.
+
+### People do not appear in the browser
+
+Check these items:
+
+1. Immich URL and API key are correct — click **Test Immich** first.
+2. Click **Load / Refresh** inside the People browser accordion.
+3. The API key's user must have access to the people list. A dedicated `frame` user may not see people from the main admin account — use an admin API key if you want to browse all people.
+4. If only 500 people load, check that your Immich version supports the `page`/`size` query parameters on `GET /api/people`. Versions older than ~1.90 may return a flat list without pagination.
+
+### People appear in the browser but not in ImmichFrame
+
+1. Make sure you clicked **Save account & policy** after selecting people — saving writes the UUIDs into `Settings.json`.
+2. Verify the `People` field in `Settings.json` contains the correct UUIDs.
+3. Restart ImmichFrame so it re-reads `Settings.json`.
 
 ### Albums appear in the manager but not in ImmichFrame
 
