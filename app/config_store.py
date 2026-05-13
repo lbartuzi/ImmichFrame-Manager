@@ -95,6 +95,8 @@ DEFAULT_ACCOUNT_STATE: Dict[str, Any] = {
     "last_album_refresh": None,
     "album_cache_error": None,
     "album_cache_source": None,
+    "people_cache": [],
+    "last_people_refresh": None,
 }
 
 _LOCK = threading.RLock()
@@ -254,6 +256,8 @@ class ConfigStore:
             merged[field] = _listify(merged.get(field))
         if not isinstance(merged.get("album_cache"), list):
             merged["album_cache"] = []
+        if not isinstance(merged.get("people_cache"), list):
+            merged["people_cache"] = []
         accounts[key] = merged
         return merged
 
@@ -268,6 +272,14 @@ class ConfigStore:
         policy["album_cache_error"] = None
         policy["album_cache_source"] = source
         policy["last_seen_albums"] = [str(album["id"]) for album in cleaned]
+        self.save_state(state)
+        return policy
+
+    def cache_people(self, account_index: int, people: List[Dict[str, Any]]) -> Dict[str, Any]:
+        state = self.load_state()
+        policy = self.account_state(state, account_index)
+        policy["people_cache"] = people
+        policy["last_people_refresh"] = _now_iso()
         self.save_state(state)
         return policy
 

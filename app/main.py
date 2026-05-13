@@ -340,6 +340,7 @@ def create_app() -> Flask:
     def api_people(index: int) -> Any:
         try:
             people = make_client(index).list_people()
+            store.cache_people(index, people)
             return jsonify({"ok": True, "people": people})
         except Exception as exc:
             return jsonify({"ok": False, "error": str(exc)}), 400

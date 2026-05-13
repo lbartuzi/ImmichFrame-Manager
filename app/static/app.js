@@ -189,14 +189,17 @@
   const statusBox   = document.getElementById('peopleStatus');
   const countBadge  = document.getElementById('peopleBrowserCount');
   const field       = document.getElementById('peopleField');
+  const showSelBtn  = document.getElementById('showSelectedOnly');
 
   if (!loadBtn || !grid) return;
 
-  const thumbBase  = loadBtn.dataset.thumbBase || '';
-  const peopleUrl  = loadBtn.dataset.peopleUrl || '';
+  const thumbBase = loadBtn.dataset.thumbBase || '';
+  const peopleUrl = loadBtn.dataset.peopleUrl || '';
 
-  let allPeople = [];
-  let selected  = new Set((window.IMF_MANAGER?.accountPeople || []).map(String).filter(Boolean));
+  // Seed from server-side cache so faces show immediately on page load
+  let allPeople   = (window.IMF_MANAGER?.peopleCached || []);
+  let selected    = new Set((window.IMF_MANAGER?.accountPeople || []).map(String).filter(Boolean));
+  let showSelOnly = false;
 
   function esc(v) {
     return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -222,28 +225,36 @@
 
   function visible() {
     const q = (searchInput?.value || '').toLowerCase().trim();
-    return q ? allPeople.filter(p => p.name.toLowerCase().includes(q)) : allPeople;
+    let list = q ? allPeople.filter(p => p.name.toLowerCase().includes(q)) : allPeople;
+    if (showSelOnly) list = list.filter(p => selected.has(String(p.id)));
+    return list;
   }
 
   function renderPeople() {
     const list = visible();
+
     if (!allPeople.length) {
-      grid.innerHTML = '<div class="people-empty muted">Click "Load / Refresh" to fetch people from Immich.</div>';
+      const msg = showSelOnly
+        ? 'Load people first, then use "Show selected only".'
+        : 'Click "Load / Refresh" to fetch people from Immich.';
+      grid.innerHTML = `<div class="people-empty muted">${msg}</div>`;
       return;
     }
     if (!list.length) {
-      grid.innerHTML = '<div class="people-empty muted">No people match the filter.</div>';
+      const msg = showSelOnly
+        ? `None of the ${selected.size} selected ID(s) appear in the loaded list.`
+        : 'No people match the filter.';
+      grid.innerHTML = `<div class="people-empty muted">${msg}</div>`;
       return;
     }
+
     grid.innerHTML = list.map(p => {
       const id  = String(p.id);
       const sel = selected.has(id);
-      const src = esc(thumbUrl(id));
-      const fb  = '/static/avatar-fallback.svg';
       return `<label class="person-card${sel ? ' is-selected' : ''}" data-person-id="${esc(id)}">
   <input type="checkbox" class="person-check sr-only" value="${esc(id)}"${sel ? ' checked' : ''}>
   <div class="person-avatar-wrap">
-    <img class="person-avatar" src="${src}" alt="${esc(p.name)}" loading="lazy"
+    <img class="person-avatar" src="${esc(thumbUrl(id))}" alt="${esc(p.name)}" loading="lazy"
          onerror="this.classList.add('avatar-error');this.nextElementSibling.style.display='flex'">
     <div class="person-avatar-fallback" style="display:none">
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -264,9 +275,20 @@
     if (e.target.checked) { selected.add(id);    card?.classList.add('is-selected'); }
     else                  { selected.delete(id); card?.classList.remove('is-selected'); }
     syncField();
+    // Re-render when filter is active so deselected cards disappear immediately
+    if (showSelOnly) renderPeople();
   });
 
   if (searchInput) searchInput.addEventListener('input', renderPeople);
+
+  if (showSelBtn) {
+    showSelBtn.addEventListener('click', () => {
+      showSelOnly = !showSelOnly;
+      showSelBtn.classList.toggle('is-active', showSelOnly);
+      showSelBtn.textContent = showSelOnly ? 'Show all' : 'Show selected only';
+      renderPeople();
+    });
+  }
 
   loadBtn.addEventListener('click', async () => {
     loadBtn.disabled = true;
@@ -277,7 +299,7 @@
       if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
       allPeople = data.people || [];
       renderPeople();
-      showStatus(`Loaded ${allPeople.length} people.`, 'success');
+      showStatus(`Loaded ${allPeople.length} people. Named first, unnamed at the end.`, 'success');
       document.getElementById('peopleBrowserAccordion')?.setAttribute('open', '');
     } catch (err) {
       showStatus(`Could not load people: ${err.message}`, 'error');

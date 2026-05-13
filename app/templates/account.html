@@ -71,6 +71,7 @@
         <div class="people-browser-body">
           <div class="people-browser-toolbar">
             <input id="peopleSearch" class="people-search-input" placeholder="Filter by name…" autocomplete="off">
+            <button type="button" id="showSelectedOnly">Show selected only</button>
             <button type="button" id="loadPeople"
               data-people-url="{{ url_for('api_people', index=index) }}"
               data-thumb-base="{{ url_for('api_person_thumbnail', index=index, person_id='PERSON_ID') }}">Load / Refresh</button>
@@ -155,6 +156,7 @@ window.IMF_MANAGER = {
   accountAlbums: {{ (account.Albums or [])|tojson }},
   accountExcludedAlbums: {{ (account.ExcludedAlbums or [])|tojson }},
   accountPeople: {{ (account.People or [])|tojson }},
+  peopleCached: {{ (policy.people_cache or [])|tojson }},
 };
 </script>
 {% endblock %}

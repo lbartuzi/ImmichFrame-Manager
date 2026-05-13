@@ -422,6 +422,7 @@ details[open] > .people-browser-summary::before { transform: rotate(90deg); }
   max-width: 100%;
 }
 .people-empty { padding: 1.25rem; text-align: center; }
+button.is-active { border-color: var(--ok); color: var(--ok); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 
 @media (max-width: 720px) {
